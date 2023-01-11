@@ -1,10 +1,6 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
-	"io"
-	"log"
 	"net/http"
 
 	"github.com/ardanlabs/service/internal/platform/web"

@@ -2,19 +2,28 @@ package handlers
 
 import (
 	"github.com/ardanlabs/service/internal/mid"
-	"net/http"
+	"os"
 
 	"github.com/ardanlabs/service/internal/platform/web"
 )
+
+// APIMuxConfig contains all the mandatory systems required by handlers.
+type APIMuxConfig struct {
+	Shutdown chan os.Signal
+}
+
 // API returns a handler for a set of routes.
-func API() http.Handler {
+func APIMux(cfg APIMuxConfig) *web.App {
 
-	// Create the application.
-	app := web.New(mid.RequestLogger, mid.ErrorHandler)
+	//Construct the web.App which holds all routes as well as common Middleware
+	app := web.New(cfg.Shutdown, mid.RequestLogger, mid.ErrorHandler)
 
-	// Bind all the user handlers.
-	var u User
-	app.Handle("GET", "/v1/users", u.List)
-
+	v1(app)
 	return app
+}
+
+func v1(app *web.App) {
+	const version = "v1"
+	var u User
+	app.Handle("GET", version, "/users", u.List)
 }

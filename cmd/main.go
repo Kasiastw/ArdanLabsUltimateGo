@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"syscall"
+
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
+
 	"time"
 
 	"github.com/ardanlabs/service/cmd/crud/handlers"
@@ -37,9 +40,14 @@ func main() {
 	// ============================================================
 	// Start Service
 
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+
+
 	server := http.Server{
 		Addr:           host,
-		Handler:        handlers.API(),
+		Handler:        handlers.APIMux(handlers.APIMuxConfig{
+			Shutdown: shutdown}),
 		ReadTimeout:    readTimeout,
 		WriteTimeout:   writeTimeout,
 		MaxHeaderBytes: 1 << 20,
@@ -54,26 +62,27 @@ func main() {
 		wg.Done()
 	}()
 
+
 	// ============================================================
 	// Shutdown
 
 	// Blocking main and waiting for shutdown.
-	osSignals := make(chan os.Signal, 1)
-	signal.Notify(osSignals, os.Interrupt)
-	<-osSignals
+	select {
+	case sig := <- shutdown:
+		log.Println("stop", sig)
+		// Create context for Shutdown call.
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
 
-	// Create context for Shutdown call.
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	// Asking listener to shutdown and load shed.
-	if err := server.Shutdown(ctx); err != nil {
+		// Asking listener to shutdown and load shed.
+		if err := server.Shutdown(ctx); err != nil {
 		log.Printf("shutdown : Graceful shutdown did not complete in %v : %v", shutdownTimeout, err)
 
 		if err := server.Close(); err != nil {
-			log.Printf("shutdown : Error killing server : %v", err)
+		log.Printf("shutdown : Error killing server : %v", err)
 		}
 	}
+}
 
 	// Waiting for service to complete that load shedding.
 	wg.Wait()

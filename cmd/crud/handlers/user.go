@@ -12,7 +12,7 @@ type User struct {
 }
 
 // List returns all the existing users in the system.
-func (u *User) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+func (u *User) List(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	data := struct {
 		Name  string
 		Email string

@@ -14,7 +14,7 @@ import (
 func ErrorHandler(next web.Handler) web.Handler {
 
 	// Create the handler that will be attached in the middleware chain.
-	h := func(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 		v := ctx.Value(web.KeyValues).(*web.Values)
 
 		// In the event of a panic, we want to capture it here so we can send an
@@ -33,7 +33,7 @@ func ErrorHandler(next web.Handler) web.Handler {
 			}
 		}()
 
-		if err := next(ctx, w, r, params); err != nil {
+		if err := next(ctx, w, r); err != nil {
 
 			if errors.Cause(err) != web.ErrNotFound {
 

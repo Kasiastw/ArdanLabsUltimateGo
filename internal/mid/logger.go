@@ -14,10 +14,11 @@ import (
 func RequestLogger(next web.Handler) web.Handler {
 
 	// Wrap this handler around the next one provided.
-	h := func(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 		v := ctx.Value(web.KeyValues).(*web.Values)
+		//v:= web.GetValues(ctx)
 
-		next(ctx, w, r, params)
+		next(ctx, w, r)
 
 		log.Printf("%s : (%d) : %s %s -> %s (%s)",
 			v.TraceID,

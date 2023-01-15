@@ -11,26 +11,26 @@ import (
 
 // RequestLogger writes some information about the request to the logs in
 // the format: TraceID : (200) GET /foo -> IP ADDR (latency)
-func RequestLogger(next web.Handler) web.Handler {
+func RequestLogger(handler web.Handler) web.Handler {
 
-	// Wrap this handler around the next one provided.
-	h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-		v := ctx.Value(web.KeyValues).(*web.Values)
-		//v:= web.GetValues(ctx)
+		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+			//v := ctx.Value(web.KeyValues).(*web.Values)
+			v:= web.GetValues(ctx)
 
-		next(ctx, w, r)
+			log.Printf("request started trace_id %s, method %s, path %s, remoteaddr %s",
+				v.TraceID, r.Method, r.URL.Path, r.RemoteAddr)
 
-		log.Printf("%s : (%d) : %s %s -> %s (%s)",
-			v.TraceID,
-			v.StatusCode,
-			r.Method, r.URL.Path,
-			r.RemoteAddr, time.Since(v.Now),
-		)
+			err:= handler(ctx, w, r)
 
-		// This is the top of the food chain. At this point all error
-		// handling has been done including logging.
-		return nil
+			log.Printf("request completed trace_id %s : (%d) : method %s, path %s, remoteaddr %s, time (%s)",
+				v.TraceID, v.StatusCode, r.Method, r.URL.Path, r.RemoteAddr, time.Since(v.Now))
+
+			// This is the top of the food chain. At this point all error
+			// handling has been done including logging.
+			return err
+		}
+
+		return h
 	}
 
-	return h
-}
+

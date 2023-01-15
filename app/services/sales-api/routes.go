@@ -1,4 +1,4 @@
-package handlers
+package sales_api
 
 import (
 	"github.com/ardanlabs/service/internal/mid"
@@ -16,7 +16,7 @@ type APIMuxConfig struct {
 func APIMux(cfg APIMuxConfig) *web.App {
 
 	//Construct the web.App which holds all routes as well as common Middleware
-	app := web.New(cfg.Shutdown, mid.RequestLogger, mid.ErrorHandler)
+	app := web.New(cfg.Shutdown, mid.RequestLogger, mid.Errors, mid.Panics)
 
 	v1(app)
 	return app

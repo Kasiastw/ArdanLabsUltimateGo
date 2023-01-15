@@ -1,4 +1,4 @@
-package handlers
+package sales_api
 
 import (
 	"context"

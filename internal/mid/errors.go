@@ -2,54 +2,56 @@ package mid
 
 import (
 	"context"
+	"github.com/ardanlabs/service/business/sys/validate"
+	"github.com/ardanlabs/service/internal/platform/web"
 	"log"
 	"net/http"
-	"runtime/debug"
-
-	"github.com/ardanlabs/service/internal/platform/web"
-	"github.com/pkg/errors"
 )
 
 // ErrorHandler for catching and responding errors.
-func ErrorHandler(next web.Handler) web.Handler {
+func Errors(handler web.Handler) web.Handler {
+		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+			v := web.GetValues(ctx)
 
-	// Create the handler that will be attached in the middleware chain.
-	h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-		v := ctx.Value(web.KeyValues).(*web.Values)
+			// Run the next handler and catch any propagated error
+			if err := handler(ctx, w, r); err != nil {
+				log.Println("ERROR", "trace_id", v.TraceID, "ERROR", err)
 
-		// In the event of a panic, we want to capture it here so we can send an
-		// error down the stack.
-		defer func() {
-			if r := recover(); r != nil {
+			var er validate.ErrorResponse
+			var status int
+			switch {
+			case validate.IsFieldErrors(err):
+				fieldErrors := validate.GetFieldErrors(err)
+				er = validate.ErrorResponse{
+					Error:  "data validation error",
+					Fields: fieldErrors.Fields(),
+				}
+				status = http.StatusBadRequest
 
-				// Log the panic.
-				log.Printf("%s : ERROR : Panic Caught : %s\n", v.TraceID, r)
-
-				// Respond with the error.
-				web.RespondError(ctx, w, errors.New("unhandled"), http.StatusInternalServerError)
-
-				// Print out the stack.
-				log.Printf("%s : ERROR : Stacktrace\n%s\n", v.TraceID, debug.Stack())
+			case validate.IsRequestError(err):
+				reqErr := validate.GetRequestError(err)
+				er = validate.ErrorResponse{
+					Error: reqErr.Error(),
+				}
+				status = reqErr.Status
+			default:
+				er = validate.ErrorResponse{
+					Error: http.StatusText(http.StatusInternalServerError),
+				}
+				status = http.StatusInternalServerError
 			}
-		}()
 
-		if err := next(ctx, w, r); err != nil {
-
-			if errors.Cause(err) != web.ErrNotFound {
-
-				// Log the error.
-				log.Printf("%s : ERROR : %+v\n", v.TraceID, err)
+			if err:= web.Respond(ctx, w, er, status); err!=nil {
+				return err
 			}
 
-			// Respond with the error.
-			web.Error(ctx, w, errors.Cause(err))
-
-			// The error has been handled so we can stop propigating it.
-			return nil
+			if ok := web.IsShutdown(err); ok {
+				return err
+			}
 		}
-
 		return nil
+		}
+	return h
 	}
 
-	return h
-}
+

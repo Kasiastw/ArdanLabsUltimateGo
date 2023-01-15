@@ -12,7 +12,7 @@ import (
 
 	"time"
 
-	"github.com/ardanlabs/service/cmd/crud/handlers"
+	"github.com/ardanlabs/service/app/services/sales-api"
 )
 
 /*
@@ -46,7 +46,7 @@ func main() {
 
 	server := http.Server{
 		Addr:           host,
-		Handler:        handlers.APIMux(handlers.APIMuxConfig{
+		Handler:        sales_api.APIMux(sales_api.APIMuxConfig{
 			Shutdown: shutdown}),
 		ReadTimeout:    readTimeout,
 		WriteTimeout:   writeTimeout,

@@ -3,6 +3,7 @@ package mid
 import (
 	"context"
 	"fmt"
+	"github.com/ardanlabs/service/internal/platform/metrics"
 	"github.com/ardanlabs/service/internal/platform/web"
 	"net/http"
 	"runtime/debug"
@@ -20,6 +21,7 @@ func Panics(handler web.Handler) web.Handler {
 				if rec := recover(); rec != nil {
 					trace := debug.Stack()
 					err = fmt.Errorf("PANIC [%v] TRACE[%s]", rec, string(trace))
+					metrics.AddPanics(ctx)
 				}
 			}()
 

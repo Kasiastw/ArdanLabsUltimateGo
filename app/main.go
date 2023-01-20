@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"github.com/ardanlabs/service/business/sys/auth"
+	"github.com/ardanlabs/service/internal/keystore"
 	"syscall"
 
 	"log"
@@ -28,7 +31,8 @@ func main() {
 
 	// ============================================================
 	// Configuration
-
+	KeysFolder := "zarf/keys"
+	ActiveKID := "54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"
 	readTimeout := 5 * time.Second
 	writeTimeout := 10 * time.Second
 	shutdownTimeout := 5 * time.Second
@@ -37,22 +41,43 @@ func main() {
 		host = ":3000"
 	}
 
+
+	// =========================================================================
+	// Initialize authentication support
+
+	//log.Println("startup", "status", "initializing authentication support")
+
+	//Construct a key store based on the key files stored in
+	//the specified directory.
+	ks, err:= keystore.NewFS(os.DirFS(KeysFolder))
+	if err != nil {
+		fmt.Errorf("constructing auth: %w", err)
+	}
+
+	auth, err := auth.New(ActiveKID, ks)
+	if err != nil {
+		fmt.Errorf("constructing auth: %w", err)
+	}
+
+
 	// ============================================================
 	// Start Service
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
+	apiMux := sales_api.APIMux(sales_api.APIMuxConfig{
+		Shutdown: shutdown,
+		Auth: auth,
+	})
 
 	server := http.Server{
 		Addr:           host,
-		Handler:        sales_api.APIMux(sales_api.APIMuxConfig{
-			Shutdown: shutdown}),
+		Handler:        apiMux,
 		ReadTimeout:    readTimeout,
 		WriteTimeout:   writeTimeout,
 		MaxHeaderBytes: 1 << 20,
 	}
-
 	// Starting the service, listening for requests.
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -61,7 +86,6 @@ func main() {
 		log.Printf("shutdown : Listener closed : %v", server.ListenAndServe())
 		wg.Done()
 	}()
-
 
 	// ============================================================
 	// Shutdown
@@ -88,3 +112,4 @@ func main() {
 	wg.Wait()
 	log.Println("main : Completed")
 }
+

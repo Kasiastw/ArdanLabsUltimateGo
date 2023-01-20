@@ -20,7 +20,7 @@ type KeyStore struct {
 
 func New() *KeyStore {
 	return &KeyStore{
-		store: map[string]*rsa.PrivateKey
+		store: map[string]*rsa.PrivateKey{},
 	}
 }
 //NewMap constructs a KeyStore wth an initial set of keys
@@ -64,7 +64,7 @@ func NewFS(fsys fs.FS) (*KeyStore, error) {
 			return fmt.Errorf("reading auth private key: %w", err)
 		}
 
-		privateKey, err := jwt.ParseRSAPublicKeyFromPEM(privatePEM)
+		privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privatePEM)
 		if err!=nil{
 			return fmt.Errorf("parsing auth private key: %w", err)
 		}
@@ -91,9 +91,7 @@ func (ks *KeyStore) Remove(kid string)  {
 
 //PrivateKey searches the key store for a given kid and returns
 //the private key
-func (ks *KeyStore) PrivateKey(kid string) (*rsa.PrivateKey, error) {
-	ks.mu.RUnlock()
-	defer ks.mu.RUnlock()
+func (ks *KeyStore) PrivateKeyPEM(kid string) (*rsa.PrivateKey, error) {
 
 	privateKey, found := ks.store[kid]
 	if !found {
@@ -103,9 +101,7 @@ func (ks *KeyStore) PrivateKey(kid string) (*rsa.PrivateKey, error) {
 }
 
 //searches the key store for a given kid and returns the public key
-func (ks *KeyStore) PublicKey(kid string) (*rsa.PublicKey, error) {
-	ks.mu.RUnlock()
-	defer ks.mu.RUnlock()
+func (ks *KeyStore) PublicKeyPEM(kid string) (*rsa.PublicKey, error) {
 
 	privateKey, found := ks.store[kid]
 	if !found {
@@ -113,4 +109,6 @@ func (ks *KeyStore) PublicKey(kid string) (*rsa.PublicKey, error) {
 	}
 	return &privateKey.PublicKey, nil
 }
+
+
 

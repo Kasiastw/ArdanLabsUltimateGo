@@ -4,9 +4,7 @@ package auth
 import (
 	"crypto/rsa"
 	"errors"
-	"github.com/ardanlabs/service/internal/keystore"
-	"sync"
-
+	"fmt"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -27,12 +25,11 @@ type Auth struct {
 	keyLookup KeyLookup
 	method    jwt.SigningMethod
 	parser    *jwt.Parser
-	mu        sync.RWMutex
 	keyFunc   func(t *jwt.Token) (interface{}, error)
 	cache     map[string]string
 }
 
-func New(activeKID string, keyLookup *keystore.KeyStore) (*Auth, error) {
+func New(activeKID string, keyLookup KeyLookup) (*Auth, error) {
 
 	// The active KID represents the private key used to signed new tokens
 	_, err := keyLookup.PrivateKeyPEM(activeKID)
@@ -69,27 +66,20 @@ func New(activeKID string, keyLookup *keystore.KeyStore) (*Auth, error) {
 	return &a, nil
 }
 
-//// GenerateToken generates a signed JWT token string representing the user Claims.
-//func (a *Auth) GenerateToken(kid string, claims Claims) (string, error) {
-//	token := jwt.NewWithClaims(a.method, claims)
-//	token.Header["kid"] = kid
-//
-//	privateKeyPEM, err := a.keyLookup.PrivateKeyPEM(kid)
-//	if err != nil {
-//		return "", fmt.Errorf("private key: %w", err)
-//	}
-//	sig := base64.StdEncoding.EncodeToString(privateKeyPEM)
-//	fmt.Printf("Signature: %v\n", sig)
-//
-//	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(privateKeyPEM))
-//	if err != nil {
-//		return "", fmt.Errorf("parsing private pem: %w", err)
-//	}
-//
-//	str, err := token.SignedString(privateKey)
-//	if err != nil {
-//		return "", fmt.Errorf("signing token: %w", err)
-//	}
-//
-//	return str, nil
-//}
+// GenerateToken generates a signed JWT token string representing the user Claims.
+func (a *Auth) GenerateToken(claims Claims) (string, error) {
+	token := jwt.NewWithClaims(a.method, claims)
+	token.Header["kid"] = a.activeKID
+
+	privateKey, err := a.keyLookup.PrivateKeyPEM(a.activeKID)
+	if err != nil {
+		return "", fmt.Errorf("private key: %w", err)
+	}
+
+	str, err := token.SignedString(privateKey)
+	if err != nil {
+		return "", fmt.Errorf("signing token: %w", err)
+	}
+
+	return str, nil
+}

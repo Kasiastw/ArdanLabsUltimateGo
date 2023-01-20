@@ -1,4 +1,4 @@
-package keystore
+package auth
 
 import (
 	"crypto/rsa"
